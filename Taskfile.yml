@@ -1,0 +1,118 @@
+version: "3"
+
+vars:
+  PYTHON_VERSION: "3.11"
+  PACKAGE_NAME: my_package
+  SRC_DIR: src
+  TESTS_DIR: tests
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+    silent: true
+
+  install:
+    desc: Install all dependencies (including dev)
+    cmds:
+      - uv sync --all-groups
+    sources:
+      - pyproject.toml
+      - uv.lock
+    generates:
+      - .venv/**/*
+
+  install-prod:
+    desc: Install production dependencies only
+    cmds:
+      - uv sync --no-dev
+
+  update:
+    desc: Update all dependencies
+    cmds:
+      - uv lock --upgrade
+      - uv sync --all-groups
+
+  format:
+    desc: Format code with ruff
+    cmds:
+      - uv run ruff format {{.SRC_DIR}} {{.TESTS_DIR}}
+
+  lint:
+    desc: Lint code with ruff
+    cmds:
+      - uv run ruff check {{.SRC_DIR}} {{.TESTS_DIR}}
+
+  lint-fix:
+    desc: Lint and auto-fix with ruff
+    cmds:
+      - uv run ruff check --fix {{.SRC_DIR}} {{.TESTS_DIR}}
+
+  typecheck:
+    desc: Type check with mypy
+    cmds:
+      - uv run mypy {{.SRC_DIR}}
+
+  test:
+    desc: Run tests with pytest
+    cmds:
+      - uv run pytest {{.TESTS_DIR}} -v
+
+  test-fast:
+    desc: Run tests without coverage
+    cmds:
+      - uv run pytest {{.TESTS_DIR}} -v --no-cov
+
+  test-watch:
+    desc: Run tests in watch mode (requires pytest-watch)
+    cmds:
+      - uv run pytest-watch
+
+  check:
+    desc: Run all checks (format check, lint, typecheck, test)
+    cmds:
+      - task: format-check
+      - task: lint
+      - task: typecheck
+      - task: test
+
+  format-check:
+    desc: Check formatting without applying changes
+    cmds:
+      - uv run ruff format --check {{.SRC_DIR}} {{.TESTS_DIR}}
+
+  pre-commit-install:
+    desc: Install pre-commit hooks
+    cmds:
+      - uv run pre-commit install
+
+  pre-commit-run:
+    desc: Run pre-commit on all files
+    cmds:
+      - uv run pre-commit run --all-files
+
+  clean:
+    desc: Clean build artifacts and caches
+    cmds:
+      - rm -rf dist/ build/ .eggs/ *.egg-info
+      - rm -rf .pytest_cache/ .mypy_cache/ .ruff_cache/
+      - rm -rf htmlcov/ .coverage coverage.xml
+      - find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+      - find . -type f -name "*.pyc" -delete 2>/dev/null || true
+
+  build:
+    desc: Build the package
+    cmds:
+      - uv build
+
+  publish:
+    desc: Publish package to PyPI (requires PYPI_TOKEN)
+    cmds:
+      - uv publish
+
+  dev:
+    desc: Start development environment (install + pre-commit)
+    cmds:
+      - task: install
+      - task: pre-commit-install
